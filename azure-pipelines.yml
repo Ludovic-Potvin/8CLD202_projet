@@ -14,7 +14,7 @@ variables:
 - name: RG_Location
   value: 'eastus'
 - name: Vault
-  value: 'lupo-keyvault-1'
+  value: 'lupo-keyvault-2'
 - name: AppConfig
   value: 'lupo-appconfig-1'
 - name: LogAnalytics

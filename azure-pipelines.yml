@@ -32,7 +32,7 @@ steps:
     inputs:
       deploymentScope: 'Resource Group'
       azureResourceManagerConnection: 'ConnectionRGLupo'
-      subscriptionId: 'f8ee07ed-b563-4b27-931f-56bdf1405242'
+      subscriptionId: 'fcd44864-d682-4d41-9c1b-745fe53c7410'
       action: 'Create Or Update Resource Group'
       resourceGroupName: '$(RG)'
       location: '$(RG_Location)'

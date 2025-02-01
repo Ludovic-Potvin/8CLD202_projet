@@ -14,9 +14,9 @@ variables:
 - name: RG_Location
   value: 'eastus'
 - name: Vault
-  value: 'lupo-keyvault-2'
+  value: 'lupo-keyvault-clean'
 - name: AppConfig
-  value: 'lupo-appconfig-1'
+  value: 'lupo-appconfig-clean'
 - name: LogAnalytics
   value: 'LogAnalyticsName'
 - name: InfrastructureFolder

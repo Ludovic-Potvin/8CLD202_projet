@@ -31,7 +31,7 @@ steps:
     displayName: ARM Deployment
     inputs:
       deploymentScope: 'Resource Group'
-      azureResourceManagerConnection: 'ConnectionRGLupo'
+      azureResourceManagerConnection: 'Subscription clean'
       subscriptionId: 'fcd44864-d682-4d41-9c1b-745fe53c7410'
       action: 'Create Or Update Resource Group'
       resourceGroupName: '$(RG)'

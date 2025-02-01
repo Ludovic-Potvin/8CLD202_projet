@@ -10,13 +10,13 @@ pool: "default"
 
 variables:
 - name: RG
-  value: 'Guro'
+  value: 'Lupo'
 - name: RG_Location
   value: 'eastus'
 - name: Vault
-  value: 'GuroKeyVault4'
+  value: 'lupo-keyvault-1'
 - name: AppConfig
-  value: 'GuroAppConfiguration5'
+  value: 'lupo-appconfig-1'
 - name: LogAnalytics
   value: 'LogAnalyticsName'
 - name: InfrastructureFolder
@@ -31,8 +31,8 @@ steps:
     displayName: ARM Deployment
     inputs:
       deploymentScope: 'Resource Group'
-      azureResourceManagerConnection: 'Azure subscription 1(970fcef5-9c23-4f7d-a11b-5a96d104f066)'
-      subscriptionId: '970fcef5-9c23-4f7d-a11b-5a96d104f066'
+      azureResourceManagerConnection: 'Azure subscription 1(f8ee07ed-b563-4b27-931f-56bdf1405242)'
+      subscriptionId: 'f8ee07ed-b563-4b27-931f-56bdf1405242'
       action: 'Create Or Update Resource Group'
       resourceGroupName: '$(RG)'
       location: '$(RG_Location)'

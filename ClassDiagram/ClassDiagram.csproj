@@ -1,0 +1,21 @@
+﻿<Project Sdk="Microsoft.NET.Sdk">
+
+  <PropertyGroup>
+    <OutputType>Exe</OutputType>
+    <TargetFramework>net9.0</TargetFramework>
+    <ImplicitUsings>enable</ImplicitUsings>
+    <Nullable>enable</Nullable>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <Compile Include="..\MVC\Controllers\CommentsController.cs" Link="CommentsController.cs" />
+    <Compile Include="..\MVC\Controllers\HomeController.cs" Link="HomeController.cs" />
+    <Compile Include="..\MVC\Controllers\PostsController.cs" Link="PostsController.cs" />
+    <Compile Include="..\MVC\Models\ApplicationConfiguration.cs" Link="ApplicationConfiguration.cs" />
+    <Compile Include="..\MVC\Models\ApplicationDbContext.cs" Link="ApplicationDbContext.cs" />
+    <Compile Include="..\MVC\Models\ApplicationFeatures.cs" Link="ApplicationFeatures.cs" />
+    <Compile Include="..\MVC\Models\Comment.cs" Link="Comment.cs" />
+    <Compile Include="..\MVC\Models\Post.cs" Link="Post.cs" />
+  </ItemGroup>
+
+</Project>

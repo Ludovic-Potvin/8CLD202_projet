@@ -1,0 +1,47 @@
+# Starter pipeline
+# Start with a minimal pipeline that you can customize to build and deploy your code.
+# Add steps that build, run tests, deploy, and more:
+# https://aka.ms/yaml
+
+trigger:
+- master
+
+pool: "default"
+
+variables:
+- name: RG
+  value: 'Guro'
+- name: RG_Location
+  value: 'eastus'
+- name: Vault
+  value: 'GuroKeyVault4'
+- name: AppConfig
+  value: 'GuroAppConfiguration5'
+- name: LogAnalytics
+  value: 'LogAnalyticsName'
+- name: InfrastructureFolder
+  value: 'CloudInfrastructure'
+- name: ApplicationInsight
+  value: 'ApplicationInsight'
+- name: LocalSQLDB
+  value: 'Server=(localdb)\\MSSQLLocalDB;Database=MVC_local;Trusted_Connection=True;MultipleActiveResultSets=true'
+
+steps:
+  - task: AzureResourceManagerTemplateDeployment@3
+    displayName: ARM Deployment
+    inputs:
+      deploymentScope: 'Resource Group'
+      azureResourceManagerConnection: 'Azure subscription 1(970fcef5-9c23-4f7d-a11b-5a96d104f066)'
+      subscriptionId: '970fcef5-9c23-4f7d-a11b-5a96d104f066'
+      action: 'Create Or Update Resource Group'
+      resourceGroupName: '$(RG)'
+      location: '$(RG_Location)'
+      templateLocation: 'Linked artifact'
+      csmFile: '$(Build.SourcesDirectory)\$(InfrastructureFolder)\azuredeploy.json'
+      csmParametersFile: '$(Build.SourcesDirectory)\$(InfrastructureFolder)\azuredeploy.parameters.json'
+      overrideParameters: '-location $(RG_Location) -VaultName $(Vault) -AppConfigName $(AppConfig) -LogAnalyticsName $(LogAnalytics) -ApplicationInsightName $(ApplicationInsight) -LocalDB $(LocalSQLDB)'
+      deploymentMode: 'Incremental'
+      deploymentOutputs: 'Deployment1'
+  
+  - script: |
+      echo $(Deployment1)

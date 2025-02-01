@@ -1,0 +1,277 @@
+{
+  "$schema": "https://schema.management.azure.com/schemas/2015-01-01/deploymentTemplate.json#",
+  "contentVersion": "1.0.0.0",
+  "parameters": {
+    "location": {
+      "type": "String",
+      "metadata": {
+        "description": "Location for all resources."
+      }
+    },
+    "VaultName": {
+      "type": "String",
+      "metadata": {
+        "description": "Key Vault Name"
+      }
+    },
+    "AppConfigName": {
+      "type": "String",
+      "metadata": {
+        "description": "AppConfigName Name"
+      }
+    },
+    "ApplicationInsightName": {
+      "type": "String",
+      "metadata": {
+        "description": "ApplicationInsight Name"
+      }
+    },
+    "LogAnalyticsName": {
+      "type": "String",
+      "metadata": {
+        "description": "LogAnalytics Name"
+      }
+    },
+    "LocalDB": {
+      "type": "securestring",
+      "metadata": {
+        "description": "Local Database connection string"
+      }
+    }
+  },
+  "variables": {},
+  "resources": [
+    {
+      "apiVersion": "2017-03-15-preview",
+      "name": "[parameters('LogAnalyticsName')]",
+      "location": "[resourceGroup().location]",
+      "type": "Microsoft.OperationalInsights/workspaces",
+      "properties": {
+        "sku": {
+          "name": "pergb2018"
+        }
+      }
+    },
+    {
+      "name": "[parameters('ApplicationInsightName')]",
+      "type": "microsoft.insights/components",
+      "location": "[resourceGroup().location]",
+      "apiVersion": "2020-02-02-preview",
+      "dependsOn": [
+        "[resourceId('Microsoft.OperationalInsights/workspaces', parameters('LogAnalyticsName'))]"
+      ],
+      "kind": "app",
+      "properties": {
+        "ApplicationId": "[parameters('ApplicationInsightName')]",
+        "Application_Type": "web",
+        "Flow_Type": "Bluefield",
+        "Request_Source": "rest",
+        "WorkspaceResourceId": "[resourceId('Microsoft.OperationalInsights/workspaces', parameters('LogAnalyticsName'))]"
+      }
+    },
+    {
+      "type": "Microsoft.KeyVault/vaults",
+      "apiVersion": "2023-08-01-preview",
+      "name": "[parameters('VaultName')]",
+      "location": "[parameters('location')]",
+      "dependsOn": [],
+      "tags": {},
+      "properties": {
+        "enabledForDeployment": "true",
+        "enabledForTemplateDeployment": "true",
+        "enabledForDiskEncryption": "false",
+        "enableRbacAuthorization": "true",
+        "tenantId": "[subscription().tenantId]",
+        "sku": {
+          "name": "Standard",
+          "family": "A"
+        },
+        "publicNetworkAccess": "Enabled",
+        "enableSoftDelete": "false",
+        "networkAcls": {
+          "value": {
+            "defaultAction": "allow",
+            "bypass": "AzureServices",
+            "ipRules": [],
+            "virtualNetworkRules": []
+          }
+        }
+      }
+    },
+    {
+      "type": "Microsoft.AppConfiguration/configurationStores",
+      "apiVersion": "2023-03-01",
+      "name": "[parameters('AppConfigName')]",
+      "location": "[parameters('location')]",
+      "dependsOn": [
+        "[resourceId('Microsoft.Insights/components', parameters('ApplicationInsightName'))]"
+      ],
+      "sku": {
+        "name": "standard"
+      },
+      "properties": {
+        "softDeleteRetentionInDays": "1",
+        "enablePurgeProtection": "false",
+        "disableLocalAuth": "false",
+        "telemetry": {
+          "resourceId": "[resourceId('microsoft.insights/components', parameters('ApplicationInsightName'))]"
+        }
+      }
+    },
+    {
+      "type": "Microsoft.KeyVault/vaults/secrets",
+      "apiVersion": "2021-11-01-preview",
+      //semi hardcoded
+      "name": "[format('{0}/{1}', parameters('VaultName'), 'ConnectionStringApplicationInsight')]",
+      "dependsOn": [
+        "[resourceId('Microsoft.KeyVault/vaults', parameters('VaultName'))]",
+        "[resourceId('Microsoft.Insights/components', parameters('ApplicationInsightName'))]"
+      ],
+      //This provide instrumentation key
+      "properties": {
+        "value": "[reference(resourceId('Microsoft.Insights/components', parameters('ApplicationInsightName')), '2020-02-02').ConnectionString]"
+      }
+    },
+    {
+      "type": "Microsoft.KeyVault/vaults/secrets",
+      "apiVersion": "2024-04-01-preview",
+      //semi hardcoded
+      "name": "[concat(parameters('VaultName'), '/ConnectionStringLocalSQL')]",
+      "location": "eastus",
+      "dependsOn": [
+        "[resourceId('Microsoft.KeyVault/vaults', parameters('VaultName'))]",
+        "[resourceId('Microsoft.AppConfiguration/configurationStores', parameters('AppConfigName'))]"
+      ],
+      //this provide local configuration for the DB of the web site.
+      "properties": {
+        "value": "[parameters('LocalDB')]",
+        "attributes": {
+          "enabled": true
+        }
+      }
+    }, //https://github.com/Azure/AppConfiguration/issues/268#issuecomment-685319249
+    {
+      "type": "Microsoft.AppConfiguration/configurationStores/keyValues",
+      "apiVersion": "2024-05-01",
+      // hardcoded
+      "name": "[format('{0}/{1}', parameters('AppConfigName'), 'ConnectionStrings:ApplicationInsight')]",
+      "dependsOn": [
+        "[resourceId('Microsoft.KeyVault/vaults/secrets',  parameters('VaultName'), 'ConnectionStringApplicationInsight')]",
+        "[resourceId('Microsoft.KeyVault/vaults', parameters('VaultName'))]",
+        "[resourceId('Microsoft.Insights/components', parameters('ApplicationInsightName'))]",
+        "[resourceId('Microsoft.AppConfiguration/configurationStores', parameters('AppConfigName'))]"
+      ],
+      "properties": {
+        "value": "[concat('{\"uri\": \"',reference(resourceId('Microsoft.KeyVault/vaults/secrets', parameters('VaultName'), 'ConnectionStringApplicationInsight'), '2019-09-01').secretUriWithVersion, '\"}')]",
+        "contentType": "application/vnd.microsoft.appconfig.keyvaultref+json;charset=utf-8"
+      }
+    },
+    {
+      "type": "Microsoft.AppConfiguration/configurationStores/keyValues",
+      "apiVersion": "2024-05-01",
+      // hardcoded
+      "name": "[format('{0}/{1}', parameters('AppConfigName'), 'ConnectionStrings:LocalSQL')]",
+      "dependsOn": [
+        "[resourceId('Microsoft.KeyVault/vaults/secrets', parameters('VaultName'), 'ConnectionStringLocalSQL')]",
+        "[resourceId('Microsoft.KeyVault/vaults', parameters('VaultName'))]",
+        "[resourceId('Microsoft.Insights/components', parameters('ApplicationInsightName'))]",
+        "[resourceId('Microsoft.AppConfiguration/configurationStores', parameters('AppConfigName'))]"
+      ],
+      "properties": {
+        "value": "[concat('{\"uri\": \"',reference(resourceId('Microsoft.KeyVault/vaults/secrets', parameters('VaultName'), 'ConnectionStringLocalSQL'), '2019-09-01').secretUriWithVersion, '\"}')]",
+        "contentType": "application/vnd.microsoft.appconfig.keyvaultref+json;charset=utf-8"
+      }
+    },
+    {
+      "type": "Microsoft.AppConfiguration/configurationStores/keyValues",
+      "apiVersion": "2024-05-01",
+      // hardcoded
+      "name": "[format('{0}/{1}', parameters('AppConfigName'), 'Endpoints:AppConfiguration')]",
+      "dependsOn": [
+        "[resourceId('Microsoft.AppConfiguration/configurationStores', parameters('AppConfigName'))]"
+      ],
+      "properties": {
+        "value": "[reference(resourceId('Microsoft.AppConfiguration/configurationStores', parameters('AppConfigName')), '2023-03-01').endpoint]"
+      }
+    },
+    {
+      "type": "Microsoft.AppConfiguration/configurationStores/keyValues",
+      "apiVersion": "2024-05-01",
+      // hardcoded
+      "name": "[format('{0}/{1}', parameters('AppConfigName'), 'ApplicationConfiguration:FontSize')]",
+      "dependsOn": [
+        "[resourceId('Microsoft.AppConfiguration/configurationStores', parameters('AppConfigName'))]"
+      ],
+      "properties": {
+        "value": "20"
+      }
+    },
+    {
+      "type": "Microsoft.AppConfiguration/configurationStores/keyValues",
+      "apiVersion": "2024-05-01",
+      // hardcoded
+      "name": "[format('{0}/{1}', parameters('AppConfigName'), 'ApplicationConfiguration:FontColor')]",
+      "dependsOn": [
+        "[resourceId('Microsoft.AppConfiguration/configurationStores', parameters('AppConfigName'))]"
+      ],
+      "properties": {
+        "value": "red"
+      }
+    },
+    {
+      "type": "Microsoft.AppConfiguration/configurationStores/keyValues",
+      "apiVersion": "2024-05-01",
+      // hardcoded
+      "name": "[format('{0}/{1}', parameters('AppConfigName'), 'ApplicationConfiguration:WelcomePhrase')]",
+      "dependsOn": [
+        "[resourceId('Microsoft.AppConfiguration/configurationStores', parameters('AppConfigName'))]"
+      ],
+      "properties": {
+        "value": "Yo, welcome !!"
+      }
+    },
+    {
+      "type": "Microsoft.AppConfiguration/configurationStores/keyValues",
+      "apiVersion": "2024-05-01",
+      // hardcoded
+      "name": "[format('{0}/{1}', parameters('AppConfigName'), 'ApplicationConfiguration:Sentinel')]",
+      "dependsOn": [
+        "[resourceId('Microsoft.AppConfiguration/configurationStores', parameters('AppConfigName'))]"
+      ],
+      "properties": {
+        "value": 0
+      }
+    }, // Feature Flag -- hardcoded
+    {
+      "type": "Microsoft.AppConfiguration/configurationStores/keyValues",
+      "apiVersion": "2021-03-01-preview",
+      "name": "[format('{0}/{1}', parameters('AppConfigName'), format('.appconfig.featureflag~2F{0}', 'FeatureA'))]",
+      "properties": {
+        "value": "[concat('{\"id\":\"FeatureA\",\"description\":\"\",\"enabled\":true,\"conditions\":{\"client_filters\":[]}}')]",
+        "contentType": "application/vnd.microsoft.appconfig.ff+json;charset=utf-8"
+      },
+      "dependsOn": [ "[resourceId('Microsoft.AppConfiguration/configurationStores', parameters('appConfigName'))]" ]
+    },
+    {
+      "type": "Microsoft.AppConfiguration/configurationStores/keyValues",
+      "apiVersion": "2021-03-01-preview",
+      "name": "[format('{0}/{1}', parameters('AppConfigName'), format('.appconfig.featureflag~2F{0}', 'FeatureB'))]",
+      "properties": {
+        "value": "[concat('{\"id\":\"FeatureB\",\"description\":\"\",\"enabled\":false,\"conditions\":{\"client_filters\":[]}}')]",
+        "contentType": "application/vnd.microsoft.appconfig.ff+json;charset=utf-8"
+      },
+      "dependsOn": [ "[resourceId('Microsoft.AppConfiguration/configurationStores', parameters('appConfigName'))]" ]
+    }
+  ],
+  "outputs": {
+    "AppConfigName": {
+      "type": "String",
+      "value": "[parameters('AppConfigName')]"
+    },
+    // endpoint is not connectionstring .....
+    "AppConfigEndpoint": {
+      "type": "string",
+      "value": "[reference(resourceId('Microsoft.AppConfiguration/configurationStores', parameters('AppConfigName')), '2023-03-01').endpoint]"
+    }
+  }
+}
